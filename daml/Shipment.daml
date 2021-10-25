@@ -1,0 +1,36 @@
+module Shipment where
+
+template Shipment
+  with
+    importer : Party
+    exporter: Party
+    shipDate: Time
+    shipDetails: Text
+    shipAmount: Decimal
+    shipCurrency: Text
+    shipReference: Text
+    shipRemarks: Text
+  where
+    signatory exporter
+    observer importer
+
+    ensure exporter /= importer
+
+    controller exporter can
+      ShipGoods: ContractId Shipment
+          with
+          do
+              shipDate <- getTime              
+              create Shipment with 
+                shipRemarks = "Goods shipped"
+                ..
+
+    controller importer can
+      ClaimGoods: ()
+          with
+          do
+              claimedShipment <- create Shipment with 
+                shipRemarks = "Goods claimed"
+                ..
+              archive claimedShipment
+              

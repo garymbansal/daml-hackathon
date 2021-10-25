@@ -1,0 +1,49 @@
+module Main where
+import UserAdmin
+import Daml.Script
+
+setup : Script()
+
+setup = script do
+  partyImporter <- allocatePartyWithHint "Importer" (PartyIdHint "Importer")
+  partyExporter <- allocatePartyWithHint "exporter" (PartyIdHint "Exporter")
+  userAdmin <- allocatePartyWithHint "UserAdmin" (PartyIdHint "UserAdmin")
+  now <- getTime
+
+  contractImporter <- submit userAdmin do
+    createCmd Importer
+      with
+        userAdmin = userAdmin
+        importer = partyImporter
+
+  contractExporter <- submit userAdmin do
+    createCmd Exporter
+      with
+        userAdmin = userAdmin
+        exporter = partyExporter
+
+  po <- submit partyImporter do
+    exerciseCmd contractImporter IssuePurchaseOrder 
+      with
+        poExporter = partyExporter        
+        poDetails = "Goods PO"        
+        poAmount = 500.00
+        poCurrency = "USD"
+        poRemarks = "PO Created"
+
+  shipment <- submit partyExporter do
+    exerciseCmd contractExporter AcceptPurchaseOrder 
+      with
+        poId = po
+
+  releasedShipment <- submit partyExporter do
+    exerciseCmd contractExporter ReleaseShipment 
+      with
+        shipmentId = shipment
+
+  claimedShipment <- submit partyImporter do
+    exerciseCmd contractImporter ClaimShipment 
+      with
+        shipmentId = releasedShipment
+
+  return ()

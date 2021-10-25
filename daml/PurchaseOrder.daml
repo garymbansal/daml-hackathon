@@ -1,0 +1,33 @@
+module PurchaseOrder where
+import Shipment
+
+template PurchaseOrder
+  with
+    importer : Party
+    exporter: Party
+    orderDate: Time
+    orderDetails: Text
+    orderAmount: Decimal
+    orderCurrency: Text
+    orderRemarks: Text
+    -- orderId : ContractId PurchaseOrder
+  where
+    signatory importer
+    observer exporter
+
+    ensure importer /= exporter
+
+    controller exporter can
+      AcceptOrder: ContractId Shipment
+          with
+          do
+            shipDate<-getTime            
+            create Shipment 
+              with
+                shipDetails = orderDetails
+                shipAmount = orderAmount
+                shipCurrency = orderCurrency
+                shipReference = "Trying to put the archived PO contract's Id for back tracking"
+                shipRemarks = "Shipment created"
+                ..
+

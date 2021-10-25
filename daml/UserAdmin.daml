@@ -1,0 +1,116 @@
+module UserAdmin where
+
+import PurchaseOrder
+import Shipment
+
+template Importer
+  with
+    userAdmin : Party
+    importer: Party
+  where
+    signatory userAdmin
+    ensure userAdmin /= importer
+
+    key(userAdmin, importer) : (Party, Party)
+    maintainer key._1
+
+    controller importer can
+      nonconsuming IssuePurchaseOrder : ContractId PurchaseOrder
+        with
+            poExporter: Party
+            poDetails: Text
+            poAmount: Decimal
+            poCurrency: Text
+            poRemarks: Text
+        do
+            poDate <- getTime
+            
+            create PurchaseOrder
+                with
+                    exporter = poExporter
+                    orderDate = poDate
+                    orderDetails = poDetails
+                    orderAmount = poAmount
+                    orderCurrency = poCurrency
+                    orderRemarks = poRemarks
+                    ..
+      ClaimShipment : ()
+        with
+            shipmentId: ContractId Shipment            
+        do
+            exercise shipmentId ClaimGoods            
+    
+    controller userAdmin can
+            RevokeImporter: ()
+                do return ()
+
+
+template ImporterRequest
+    with
+        userAdmin: Party
+        importer: Party
+        reason: Text
+    where   
+        signatory importer
+
+        key(userAdmin, importer): (Party, Party)
+        maintainer key._2
+
+        controller userAdmin can
+            ApproveImporterRequest: ContractId Importer
+                do
+                    create Importer
+                        with
+                            ..
+            RejectImporterRequest: ()
+                do return ()
+
+template Exporter
+    with
+        userAdmin: Party
+        exporter: Party
+    where
+        signatory userAdmin
+        ensure userAdmin /= exporter
+
+        key(userAdmin, exporter): (Party, Party)
+        maintainer key._1
+
+
+        controller exporter can
+            nonconsuming AcceptPurchaseOrder: (ContractId Shipment)
+                with
+                    poId: ContractId PurchaseOrder
+                do
+                    exercise poId AcceptOrder                    
+                    
+            ReleaseShipment: (ContractId Shipment)
+                with
+                    shipmentId: ContractId Shipment
+                do
+                    exercise shipmentId ShipGoods
+            
+            
+        controller userAdmin can
+            RevokeExporter: ()
+                do return ()
+
+template ExporterRequest
+    with
+        userAdmin: Party
+        exporter: Party
+        reason: Text
+    where   
+        signatory exporter
+
+        key(userAdmin, exporter): (Party, Party)
+        maintainer key._2
+
+        controller userAdmin can
+            ApproveExporterRequest: ContractId Exporter
+                do
+                    create Exporter
+                        with
+                            ..
+            RejectExporterRequest: ()
+                do return ()
